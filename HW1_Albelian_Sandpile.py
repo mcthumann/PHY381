@@ -87,7 +87,6 @@ class AbelianSandpile:
 # from solutions.sandpile import AbelianSandpileBFS as AbelianSandpile
 # from solutions.sandpile import AbelianSandpileDFS as AbelianSandpile
 
-
 # Run sandpile simulation
 model = AbelianSandpile(n=100, random_state=0)
 
@@ -99,7 +98,7 @@ model.simulate(10000)
 plt.figure()
 plt.imshow(model.grid, cmap='gray')
 plt.title("Final state")
-
+plt.show()
 
 
 
@@ -126,6 +125,7 @@ plt.hist(waiting_times)
 plt.title('Waiting Time distribution')
 plt.xlabel('Waiting time')
 plt.ylabel('Number of events')
+plt.show()
 
 ## Duration distribution
 log_bins = np.logspace(np.log10(2), np.log10(np.max(all_avalanche_durations)), 50) # logarithmic bins for histogram
@@ -135,6 +135,7 @@ plt.loglog(bins[:-1], vals, '.', markersize=10)
 plt.title('Avalanche duration distribution')
 plt.xlabel('Avalanche duration')
 plt.ylabel('Count')
+plt.show()
 
 ## Visualize activity of the avalanches
 # Make an array storing all pairwise differences between the lattice at successive
@@ -146,3 +147,65 @@ most_recent_events = np.sum(all_diffs[-100:], axis=0)
 plt.figure(figsize=(5, 5))
 plt.imshow(most_recent_events)
 plt.title("Avalanche activity in most recent timesteps")
+plt.show()
+
+from matplotlib.animation import FuncAnimation
+from IPython.display import HTML
+
+activity_sliding2 = all_diffs[-500:]
+vmin = np.percentile(activity_sliding2, 1)
+# vmin = 0
+vmax = np.percentile(activity_sliding2, 99.8)
+
+# Assuming frames is a numpy array with shape (num_frames, height, width)
+frames = np.array(activity_sliding2).copy()
+
+fig = plt.figure(figsize=(6, 6))
+img = plt.imshow(frames[0], vmin=vmin, vmax=vmax);
+plt.xticks([]); plt.yticks([])
+# tight margins
+plt.margins(0,0)
+plt.gca().xaxis.set_major_locator(plt.NullLocator())
+
+def update(frame):
+    img.set_array(frame)
+
+ani = FuncAnimation(fig, update, frames=frames, interval=50)
+HTML(ani.to_jshtml())
+plt.show()
+
+all_diffs = np.abs(np.diff(np.array(model.history), axis=0))
+# all_diffs = all_diffs[np.sum(all_diffs, axis=(1, 2)) > 1] # Filter to only keep big events
+
+# Use a trick to calculate the sliding cumulative sum
+activity_cumulative = np.cumsum(all_diffs, axis=0)
+# activity_sliding = activity_cumulative[50:] - activity_cumulative[:-50]
+activity_sliding = all_diffs
+
+plt.figure(figsize=(5, 5))
+plt.imshow(activity_sliding[-1])
+plt.show()
+
+# # This code saves the sliding cumulative sum as a movie. No need to run this cell
+#
+# activity_sliding2 = activity_sliding[-500:]
+# vmin = np.percentile(activity_sliding2, 1)
+# # vmin = 0
+# vmax = np.percentile(activity_sliding2, 99.8)
+# for i in range(len(activity_sliding2) - 1):
+#     out_path = "private_dump/sandpile/frame" + str(i).zfill(4) + ".png"
+#
+#     plt.figure()
+#     plt.imshow(activity_sliding2[i], vmin=vmin, vmax=vmax)
+#
+#     ax = plt.gca()
+#     ax.set_axis_off()
+#     ax.xaxis.set_major_locator(plt.NullLocator())
+#     ax.yaxis.set_major_locator(plt.NullLocator())
+#     ax.set_aspect(1, adjustable='box')
+#
+#     plt.savefig(out_path, bbox_inches='tight', pad_inches=0.0, dpi=300)
+#     plt.close()
+
+
+
