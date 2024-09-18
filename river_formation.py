@@ -5,9 +5,9 @@ import time
 
 # Simulation parameters
 lattice_size = (50, 50)  # Size of the lattice (x, y)
-iterations = 500     # Number of iterations to run the simulation
+iterations = 5000     # Number of iterations to run the simulation
 precipitation_rate = 0.1 # Rate at which water is added to random cells
-erosion_rate = .05        # Erosion rate (controls how much land is eroded when water flows)
+erosion_rate = .01        # Erosion rate (controls how much land is eroded when water flows)
 land_initial_height = 10   # Initial height of the land (arbitrary units)
 delta = .1
 # max_stack = 100
@@ -15,7 +15,7 @@ flow_per_rain = lattice_size[0]*2
 
 # Create the lattice, initialized with land heights and no water
 land = np.full(lattice_size, land_initial_height, dtype=float)
-land += np.random.uniform(-delta, delta, size=lattice_size)
+#land += np.random.uniform(-delta, delta, size=lattice_size)
 water = np.zeros(lattice_size, dtype=float)
 flow_sum = np.zeros(lattice_size, dtype=float)
 
@@ -96,13 +96,13 @@ def flow(x, y, land, water):
                 neighbor_water_height = water[nx, ny]
             elif ny < 0:
                 # Neighbor is out of bounds (water can leave the system)
-                neighbor_surface_height = -100000  # Adjust based on your model
-                neighbor_land_height = -100000  # Assume no land out of bounds
+                neighbor_surface_height = land[cx, cy] - delta  # Adjust based on your model
+                neighbor_land_height = land[cx, cy] - delta # Assume no land out of bounds
                 neighbor_water_height = 0
             elif ny >= lattice_size[1]:
                 # Neighbor is out of bounds (water cant leave the system)
-                neighbor_surface_height = 1000  # Adjust based on your model
-                neighbor_land_height = 1000  # Assume no land out of bounds
+                neighbor_surface_height = 10000  # Adjust based on your model
+                neighbor_land_height = 10000  # Assume no land out of bounds
                 neighbor_water_height = 0
             else:
                 print("Neighbor error")
@@ -115,8 +115,10 @@ def flow(x, y, land, water):
                 if land[cx, cy] > neighbor_land_height:
                     if (neighbor_water_height+water[cx, cy]) < (land[cx, cy] - neighbor_land_height):
                         flow_amount = ratio*water[cx, cy]
+                        flow_amount -= flow_amount*erosion_rate
                     elif (neighbor_water_height+water[cx, cy]) > (land[cx, cy] - neighbor_land_height):
                         flow_amount = ratio*(water[cx, cy] - ((water[cx, cy] + neighbor_water_height) - (land[cx, cy] - neighbor_land_height))/2)
+                        flow_amount -= flow_amount * erosion_rate
                 else: # the water is higher here but the land is not...
                     flow_amount = min(water[cx, cy], ratio*((surface_height - neighbor_surface_height)/2))
 
@@ -130,7 +132,7 @@ def flow(x, y, land, water):
 
                     # Erode land at the source site if the land at the destination is lower
                     if neighbor_land_height <= land[cx, cy]:
-                        land[nx, ny] = land[nx, ny] - (erosion_rate * flow_amount)
+                        land[cx, cy] = land[cx, cy] - (erosion_rate * flow_amount)
 
                 #if neighbor_in_bounds and water[nx, ny] > delta:
                     # Push the neighbor to the stack to continue flowing from there
@@ -140,11 +142,15 @@ def flow(x, y, land, water):
 def step(land, water, flow_per_rain):
     # Perform precipitation
     precip_sites = add_precipitation(water)
-
+    xs = list(range(lattice_size[0]))
+    ys = list(range(lattice_size[1]))
+    np.random.shuffle(xs)
+    np.random.shuffle(ys)
     # Flow water starting from each precipitation site
     for _ in range(flow_per_rain):
-        for x, y in precip_sites:
-            flow(x, y, land, water)
+        for x in xs:
+            for y in ys:
+                flow(x, y, land, water)
 
     return land, water
 
@@ -168,7 +174,7 @@ for i in range(iterations):
         # plt.title("surface after " + str(i) + " of " + str(iterations))
         # plt.show()
         plt.figure(figsize=(10, 6))
-        plt.imshow(flow_sum, norm=LogNorm(), cmap='viridis')
+        plt.imshow(flow_sum)
         plt.colorbar()
         plt.title("flow_sum after " + str(i) + " of " + str(iterations))
         plt.show()
