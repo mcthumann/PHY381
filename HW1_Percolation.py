@@ -259,3 +259,36 @@ all_cluster_sizes = np.array(all_cluster_sizes)
 plt.figure()
 plt.hist(all_cluster_sizes, 50);
 plt.show()
+
+# Perform replicate simulations using the code I've provided below, and create a plot showing how the probability
+# of percolation changes as a function of  (the blockage probability). Beyond seeing the percolation to clogging
+# transition, you'll notice that the variance in the outcome of your simulations behaves unexpectedly. What is
+# going on here? (Hint: If you've studied the Ising model, you've seen something like this before)
+
+    # There is some critical state where the chance of percolation or clogging is about equal and the p value here is very
+    # sensitive (Note the standard deviation falls off fast). This is because adding one more blocked site is incredibly
+    # likely to merge clusters so to speak when this p value is at criticality.
+
+# Theoretically, does the transition point seen in our empirical results align with your intuition? Why does its
+# value differ from .5 (Hint: think about sites versus connections between sites).
+
+    # We use Von Neumann neighborhood rules and don't allow the percolation diagonally. The p value of criticality at .41
+    # or so differs from point 5 partially because of this. If you randomly block half the sites and don't allow for
+    # diagonal travel, then you are unlikely to percolate (think of blocking every other site in checkered fashion).
+
+# How does the memory usage and runtime of your percolation model implement scale with the lattice size? You can
+# answer this empirically or theoretically.
+
+    # Memory should scale with the lattice sites NxN since it takes O(1) per lattice site...
+    # Run time should scale with lattice sites as well. DFS and BFS both scale with lattice sites NxN
+
+# One way to sweep the control parameter  would be to start in a limit where most of the sites are blocked, and
+# then gradually open up individual sites one at a time until the lattice percolates. A video of a simulation
+# where the lattice is gradually opened can be seen here. How do the different events in this gradually unblocked
+# percolation simulation relate to the two timescales we saw in the sandpile problem?
+
+    # Near the critical point removing one block can open up large sections of the lattice. I would even guess the near
+    # criticality the amount of the lattice that is opened up when removing one block displays a 1/f distribution. The
+    # timescales here is the driving timescale (adding a sand grain or removing a clogging block) and the response
+    # timescale (how many steps it takes for the system to relax ater that change). At criticality we see a waiting
+    # distribution of 1/f between these two timescales, meaning that very long relaxation periods can be observed.

@@ -186,26 +186,19 @@ plt.figure(figsize=(5, 5))
 plt.imshow(activity_sliding[-1])
 plt.show()
 
-# # This code saves the sliding cumulative sum as a movie. No need to run this cell
-#
-# activity_sliding2 = activity_sliding[-500:]
-# vmin = np.percentile(activity_sliding2, 1)
-# # vmin = 0
-# vmax = np.percentile(activity_sliding2, 99.8)
-# for i in range(len(activity_sliding2) - 1):
-#     out_path = "private_dump/sandpile/frame" + str(i).zfill(4) + ".png"
-#
-#     plt.figure()
-#     plt.imshow(activity_sliding2[i], vmin=vmin, vmax=vmax)
-#
-#     ax = plt.gca()
-#     ax.set_axis_off()
-#     ax.xaxis.set_major_locator(plt.NullLocator())
-#     ax.yaxis.set_major_locator(plt.NullLocator())
-#     ax.set_aspect(1, adjustable='box')
-#
-#     plt.savefig(out_path, bbox_inches='tight', pad_inches=0.0, dpi=300)
-#     plt.close()
+# If a single image of the sandpile has size  (the total number of lattice sites), what do you expect
+# to be the worst-case scaling of the runtime of your algorithm? What about the expected scaling of memory usage?
 
+    # Worst case would be that the runtime scales faster than the image size. So if the image size is NxN = N**2
+    # then we know the runtime will scale no faster than N**2. So the runtime would scales linearly with the number
+    # of lattice sites. For memory usage we should also expect an image of NxN to scale linearly with the number of
+    # lattice points.
+
+# You may have noticed that the waiting time and avalanche size distribution exhibit anomalous scaling
+# in their tails, as visible as a small second peak near the extreme end of the distribution. What causes this effect?
+
+    # The sample size for these longer wait times is much smaller that for the shorter ones, thus we may depart
+    # from 1/f noise due to low sample size. Alternatively, perhaps the transient is not long enough and we have
+    # not yet reached criticality.
 
 
