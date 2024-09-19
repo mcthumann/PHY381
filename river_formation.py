@@ -29,8 +29,10 @@ class RiverFormation:
         self.land_condition = land_condition
         # Chance of a map site being randomly chosen for
         self.precipitation_rate = 1 / map_size[0]
+
         # How many times to cycle through map and flow another rainfall
-        self.flow_per_rain = int(map_size[0] / 2)
+        #self.flow_per_rain = int(map_size[0] / 2)
+        self.flow_per_rain = 10 # To speed up ...
 
         # Flat land
         self.land = np.full(map_size, self.land_initial_height, dtype=float)
@@ -62,6 +64,16 @@ class RiverFormation:
 
         surface_height = self.land[cx, cy] + self.water[cx, cy]
 
+        cy += 1 # prepare for padding
+        # pad with block / flow regions
+        left_pad_land = self.land[:, [0]] - self.precipitation
+        right_pad_land = self.land[:, [-1]] + self.precipitation
+        self.land = np.hstack((left_pad_land, self.land, right_pad_land))
+
+        left_pad_water = np.zeros((self.map_size[0], 1))
+        right_pad_water = np.zeros((self.map_size[0], 1))
+        self.water = np.hstack((left_pad_water, self.water, right_pad_water))
+
         # Calculate neighbor positions. Use wrap around for x.
         # For y we will have one open flow and one closed
         neighbors = np.array([
@@ -75,60 +87,35 @@ class RiverFormation:
             [(cx + 1) % self.map_size[0], cy + 1]  # Right Up
         ])
 
+        # Try not to favor some direction ...
+        np.random.shuffle(neighbors)
+
         # Separate neighbor x and y coordinates
         nx = neighbors[:, 0]
         ny = neighbors[:, 1]
 
-        # Initialize neighbor surface heights to some number larger than initial_land_height
-        neighbor_surface_heights = np.full(nx.shape, self.land_initial_height+10000.0)
-
-        # Identify valid indices where nx and ny are within bounds
-        valid_indices = (
-                (nx >= 0) & (nx < self.map_size[0]) &
-                (ny >= 0) & (ny < self.map_size[1])
-        )
-
         # For valid indices, compute surface heights from land and water arrays
-        neighbor_surface_heights[valid_indices] = (
-                self.land[nx[valid_indices], ny[valid_indices]] +
-                self.water[nx[valid_indices], ny[valid_indices]]
-        )
+        neighbor_surface_difference =((self.land[nx, ny] + self.water[nx, ny]) - surface_height)*(-1)
 
-        # Get indices that would sort the surface heights in ascending order
-        sorted_indices = np.argsort(neighbor_surface_heights)
+        neighbor_surface_difference[neighbor_surface_difference < 0] = 0
+        heigh_diff_sum = np.sum(neighbor_surface_difference)
+        neighbor_ratios = None
+        if heigh_diff_sum > 0:
+            neighbor_ratios = neighbor_surface_difference/heigh_diff_sum
+        elif heigh_diff_sum ==0:
+            neighbor_ratios = [.125, .125, .125, .125, .125, .125, .125, .125]
+        else:
+            print("Ratio error")
 
-        # Set ratios to determine how much flow is alloted to which neighbors ...
-        # TODO make this a parameter, flatten this out
-        neighbor_ratios = [.8, .1, .05, .02, .01, .005, .0025, .0025]
-
-        # Arrange the neighbors according to sorted surface heights
-        sorted_neighbors = neighbors[sorted_indices]
-
-        for i in range(8):
+        for i in range(len(neighbors[0])):
             # Check if neighbor is within bounds
-            nx, ny = sorted_neighbors[i]
+            nx = neighbors[i][0]
+            ny = neighbors[i][1]
             ratio = neighbor_ratios[i]
-            neighbor_in_bounds = 0 <= ny < self.map_size[1]
-            neighbor_land_height = None
-            neighbor_surface_height = None
-            neighbor_water_height = None
-            if neighbor_in_bounds:
-                # Neighbor is within bounds
-                neighbor_surface_height = self.land[nx, ny] + self.water[nx, ny]
-                neighbor_land_height = self.land[nx, ny]
-                neighbor_water_height = self.water[nx, ny]
-            elif ny<0:
-                # Neighbor is out of bounds (water can leave the system)
-                neighbor_surface_height = self.land[cx, cy] - self.precipitation  # Adjust based on your model
-                neighbor_land_height = self.land[cx, cy] - self.precipitation # Assume no land out of bounds
-                neighbor_water_height = 0
-            elif ny >= self.map_size[1]:
-                # Neighbor is out of bounds (water cant leave the system)
-                neighbor_surface_height = 10000  # Adjust based on your model
-                neighbor_land_height = 10000  # Assume no land out of bounds
-                neighbor_water_height = 0
-            else:
-                print("Neighbor error")
+            neighbor_in_bounds = 1 <= ny <= self.map_size[1]
+            neighbor_land_height = self.land[nx, ny]
+            neighbor_surface_height = self.land[nx, ny] + self.water[nx, ny]
+            neighbor_water_height = self.water[nx, ny]
 
             # Proceed if water can flow to the neighbor
             if neighbor_surface_height < surface_height and self.water[cx, cy] > 0:
@@ -138,17 +125,19 @@ class RiverFormation:
                 if self.land[cx, cy] > neighbor_land_height:
                     if (neighbor_water_height+self.water[cx, cy]) < (self.land[cx, cy] - neighbor_land_height):
                         flow_amount = ratio*self.water[cx, cy]
-                        flow_amount -= flow_amount * self.erosion_rate
+                        flow_amount -= flow_amount * self.erosion_rate / 2
                     elif (neighbor_water_height+self.water[cx, cy]) > (self.land[cx, cy] - neighbor_land_height):
                         flow_amount = ratio*(self.water[cx, cy] - ((self.water[cx, cy] + neighbor_water_height) -
                                                                    (self.land[cx, cy] - neighbor_land_height))/2)
-                        flow_amount -= flow_amount * self.erosion_rate
+                        flow_amount -= flow_amount * self.erosion_rate / 2
 
                 else: # the water is higher here but the land is not...
                     flow_amount = min(self.water[cx, cy], ratio*((surface_height - neighbor_surface_height)/2))
+                    flow_amount -= flow_amount * self.erosion_rate / 2
+
                 # Update water levels at current site
                 self.water[cx, cy] -= flow_amount
-                self.flow_sum[cx, cy] += flow_amount
+                self.flow_sum[cx, cy-1] += flow_amount
 
                 if neighbor_in_bounds:
                     # Neighbor is within bounds, update water there
@@ -156,6 +145,9 @@ class RiverFormation:
 
                 # Erode land at the source site if the land at the destination is lower
                 self.land[cx, cy] -= (self.erosion_rate * flow_amount)
+        self.water = self.water[:, 1:-1]
+        self.land = self.land[:, 1:-1]
+
 
     def step(self):
         # Perform precipitation
@@ -190,7 +182,7 @@ class RiverFormation:
                 plt.title("flow_sum after " + str(i) + " of " + str(iterations))
                 plt.show()
 
-basin = RiverFormation((200, 50), 0.2, 0, .1, 0)
+basin = RiverFormation((50, 20), 0.2, 0, .1, 0)
 basin.run(iterations=1000)
 
 # Plot the final state of the system
