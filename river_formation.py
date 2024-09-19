@@ -80,7 +80,7 @@ class RiverFormation:
         ny = neighbors[:, 1]
 
         # Initialize neighbor surface heights to some number larger than initial_land_height
-        neighbor_surface_heights = np.full(nx.shape, self.initial_land_height+10000.0)
+        neighbor_surface_heights = np.full(nx.shape, self.land_initial_height+10000.0)
 
         # Identify valid indices where nx and ny are within bounds
         valid_indices = (
@@ -98,13 +98,13 @@ class RiverFormation:
         sorted_indices = np.argsort(neighbor_surface_heights)
 
         # Set ratios to determine how much flow is alloted to which neighbors ...
-        # TODO make this a parameter
+        # TODO make this a parameter, flatten this out
         neighbor_ratios = [.8, .1, .05, .02, .01, .005, .0025, .0025]
 
         # Arrange the neighbors according to sorted surface heights
         sorted_neighbors = neighbors[sorted_indices]
 
-        for i in range(len(sorted_indices)):
+        for i in range(8):
             # Check if neighbor is within bounds
             nx, ny = sorted_neighbors[i]
             ratio = neighbor_ratios[i]
@@ -143,10 +143,9 @@ class RiverFormation:
                         flow_amount = ratio*(self.water[cx, cy] - ((self.water[cx, cy] + neighbor_water_height) -
                                                                    (self.land[cx, cy] - neighbor_land_height))/2)
                         flow_amount -= flow_amount * self.erosion_rate
+
                 else: # the water is higher here but the land is not...
                     flow_amount = min(self.water[cx, cy], ratio*((surface_height - neighbor_surface_height)/2))
-                    # Erode land at the source site if the land at the destination is lower
-                    self.land[cx, cy] -= (self.erosion_rate * flow_amount)
                 # Update water levels at current site
                 self.water[cx, cy] -= flow_amount
                 self.flow_sum[cx, cy] += flow_amount
@@ -155,8 +154,8 @@ class RiverFormation:
                     # Neighbor is within bounds, update water there
                     self.water[nx, ny] += flow_amount
 
-
-
+                # Erode land at the source site if the land at the destination is lower
+                self.land[cx, cy] -= (self.erosion_rate * flow_amount)
 
     def step(self):
         # Perform precipitation
@@ -191,7 +190,7 @@ class RiverFormation:
                 plt.title("flow_sum after " + str(i) + " of " + str(iterations))
                 plt.show()
 
-basin = RiverFormation((25, 25), 0.2, 0, .1, 0)
+basin = RiverFormation((200, 50), 0.2, 0, .1, 0)
 basin.run(iterations=1000)
 
 # Plot the final state of the system
