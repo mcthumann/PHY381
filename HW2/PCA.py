@@ -275,7 +275,8 @@ plt.show()
 # 6. What happens if we don't subtract the feature-wise mean before calculating PCA? Why does this happen?
 #
 #   When the mean is not subtracted, and the mean is far from zero, then the mean explains a lof of the variance in the
-#   data, and the leading eigenvalue/vector may be biased.
+#   data, and the leading eigenvalue/vector may be biased. Essentially PCA would focus on the offset of the data instead
+#   of just the variance in the data, which is what it is designed to do.
 
 # 7. In Fourier analysis, we project a function onto linear combination of trigonometric basis functions. How is this
 # related to principal components analysis?
